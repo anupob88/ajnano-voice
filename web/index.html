@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ajnano-voice — Thai TTS Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9; max-width: 720px; margin: 0 auto; padding: 24px; }
+  h1 { color: #f78166; font-size: 1.5rem; margin-bottom: 4px; }
+  .sub { color: #8b949e; font-size: 0.85rem; margin-bottom: 24px; }
+  textarea { width: 100%; height: 120px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; padding: 12px; font-size: 1rem; resize: vertical; }
+  label { display: block; margin-top: 16px; font-size: 0.85rem; color: #8b949e; }
+  select { width: 100%; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; padding: 8px 12px; font-size: 1rem; margin-top: 4px; }
+  button { margin-top: 16px; padding: 10px 24px; background: #f78166; color: #0d1117; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #f78b72; }
+  .row { display: flex; gap: 8px; }
+  .row button { flex: 1; }
+  #status { margin-top: 12px; font-size: 0.85rem; color: #8b949e; }
+  #audio { margin-top: 16px; width: 100%; display: none; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-top: 20px; }
+  .card h2 { font-size: 1rem; color: #f78166; margin-bottom: 8px; }
+  .card p { font-size: 0.85rem; color: #8b949e; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>ajnano-voice</h1>
+<p class="sub">VoxCPM2 Thai TTS — self-hosted, zero API cost</p>
+
+<textarea id="text" placeholder="พิมพ์ข้อความภาษาไทยที่นี่...">สวัสดีครับ ยินดีต้อนรับสู่ระบบสังเคราะห์เสียงภาษาไทย</textarea>
+
+<label>Voice Preset</label>
+<select id="voice">
+  <option value="">Default</option>
+  <option value="(A young woman, gentle and sweet voice)">Female — gentle & sweet</option>
+  <option value="(A deep male voice, calm and authoritative)">Male — deep & calm</option>
+  <option value="(A cheerful young person, fast and energetic)">Young — cheerful & fast</option>
+</select>
+
+<div class="row">
+  <button id="speak" onclick="doSpeak()">🔊 Generate Speech</button>
+</div>
+
+<div id="status"></div>
+<audio id="audio" controls></audio>
+
+<div class="card">
+  <h2>API</h2>
+  <p><code>POST /v1/audio/speech</code> — OpenAI-compatible TTS endpoint<br>
+  <code>POST /v1/audio/speech/clone</code> — Voice cloning with reference audio<br>
+  <code>GET /health</code> — Health check + GPU info</p>
+</div>
+
+<script>
+async function doSpeak() {
+  const text = document.getElementById('text').value.trim();
+  const voicePreset = document.getElementById('voice').value;
+  const input = voicePreset ? voicePreset + text : text;
+  const btn = document.getElementById('speak');
+  const status = document.getElementById('status');
+  const audio = document.getElementById('audio');
+
+  if (!input) return;
+  btn.disabled = true;
+  status.textContent = 'Generating...';
+
+  try {
+    const res = await fetch('/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, voice: 'default' }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || res.statusText); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    audio.src = url;
+    audio.style.display = 'block';
+    audio.play();
+    status.textContent = `Done — RTF: ${res.headers.get('X-RTF') || '?'} | Duration: ${res.headers.get('X-Audio-Duration') || '?'}s`;
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+
+</body>
+</html>
