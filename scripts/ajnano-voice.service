@@ -1,0 +1,18 @@
+[Unit]
+Description=ajnano-voice — VoxCPM2 TTS Server
+After=network.target
+
+[Service]
+Type=simple
+User=boon
+WorkingDirectory=/home/boon/ajnano-voice
+Environment="TORCHDYNAMO_DISABLE=1"
+Environment="VOICE_HOST=0.0.0.0"
+Environment="VOICE_PORT=8808"
+Environment="VOICE_DEVICE=cuda"
+ExecStart=/home/boon/ajnano-voice/venv/bin/python server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

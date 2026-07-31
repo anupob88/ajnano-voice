@@ -1,7 +1,15 @@
 """
 ajnano-voice — VoxCPM2 TTS Server
 OpenAI-compatible /v1/audio/speech endpoint
+
+DGX (ARM64): set TORCHDYNAMO_DISABLE=1 before running
+x86_64: Triton JIT works natively, no env var needed
 """
+import os as _os
+if _os.getenv("TORCHDYNAMO_DISABLE"):
+    import torch
+    torch._dynamo.config.disable = True
+
 import base64
 import io
 import os
