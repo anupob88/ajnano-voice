@@ -94,7 +94,6 @@ async def speech(req: SpeechRequest):
             text=req.input,
             cfg_value=2.0,
             inference_timesteps=10,
-            seed=42,
         )
     except Exception as e:
         raise HTTPException(500, f"Generation failed: {e}")
@@ -132,7 +131,6 @@ async def clone(req: CloneRequest):
             reference_wav_path=ref_path,
             cfg_value=2.0,
             inference_timesteps=10,
-            seed=42,
         )
         if req.reference_text:
             kwargs["prompt_wav_path"] = ref_path
