@@ -1,0 +1,8 @@
+{
+  "name": "Default",
+  "description": "VoxCPM2 default voice — natural, gender-neutral Thai",
+  "gender": "neutral",
+  "reference_audio": null,
+  "voice_design": null,
+  "sample_text": "สวัสดีครับ ยินดีต้อนรับ"
+}

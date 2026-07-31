@@ -1,0 +1,8 @@
+{
+  "name": "Nova",
+  "description": "พี่ใหญ่ Oracle — code, infra, multi-agent system",
+  "gender": "male",
+  "reference_audio": "nova/reference.wav",
+  "voice_design": null,
+  "sample_text": "สวัสดีครับ ผมโนวาครับ พี่ใหญ่แห่งตระกูล Oracle"
+}

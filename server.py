@@ -12,6 +12,7 @@ if _os.getenv("TORCHDYNAMO_DISABLE"):
 
 import base64
 import io
+import json
 import os
 import tempfile
 import time
@@ -26,6 +27,8 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 MODEL = None
+VOICE_PROFILES: dict[str, dict] = {}
+PROFILES_DIR = Path(__file__).parent / "profiles"
 CONFIG = {
     "host": os.getenv("VOICE_HOST", "0.0.0.0"),
     "port": int(os.getenv("VOICE_PORT", "8808")),
@@ -33,6 +36,29 @@ CONFIG = {
     "device": os.getenv("VOICE_DEVICE", "cuda"),
     "default_preset": os.getenv("VOICE_DEFAULT_PRESET", "default"),
 }
+
+def load_profiles():
+    global VOICE_PROFILES
+    if not PROFILES_DIR.exists():
+        return
+    for profile_dir in PROFILES_DIR.iterdir():
+        if not profile_dir.is_dir():
+            continue
+        profile_json = profile_dir / "profile.json"
+        if not profile_json.exists():
+            continue
+        try:
+            profile = json.loads(profile_json.read_text(encoding="utf-8"))
+            voice_id = profile_dir.name
+            ref_audio = profile.get("reference_audio")
+            if ref_audio:
+                ref_path = PROFILES_DIR / ref_audio
+                if ref_path.exists():
+                    profile["_ref_path"] = str(ref_path)
+            VOICE_PROFILES[voice_id] = profile
+            print(f"[ajnano-voice] Profile loaded: {voice_id} ({profile['name']})")
+        except Exception as e:
+            print(f"[ajnano-voice] Failed to load profile {profile_dir.name}: {e}")
 
 # ── Request models ──
 
@@ -52,6 +78,7 @@ class CloneRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global MODEL
+    load_profiles()
     print(f"[ajnano-voice] Loading {CONFIG['model']} on {CONFIG['device']}...")
     from voxcpm import VoxCPM
     MODEL = VoxCPM.from_pretrained(CONFIG["model"], load_denoiser=False)
@@ -83,6 +110,16 @@ async def health():
         "vram_total_gb": round(torch.cuda.get_device_properties(0).total_memory / 1024**3, 1) if torch.cuda.is_available() else None,
     }
 
+@app.get("/v1/voices")
+async def list_voices():
+    return {
+        "voices": [
+            {"id": vid, "name": p["name"], "description": p["description"],
+             "gender": p.get("gender", "unknown"), "has_reference": bool(p.get("_ref_path"))}
+            for vid, p in VOICE_PROFILES.items()
+        ]
+    }
+
 @app.post("/v1/audio/speech")
 async def speech(req: SpeechRequest):
     global MODEL
@@ -90,11 +127,16 @@ async def speech(req: SpeechRequest):
         raise HTTPException(503, "Model not loaded yet")
     t0 = time.time()
     try:
-        wav = MODEL.generate(
-            text=req.input,
-            cfg_value=2.0,
-            inference_timesteps=10,
-        )
+        kwargs = dict(text=req.input, cfg_value=2.0, inference_timesteps=10)
+        profile = VOICE_PROFILES.get(req.voice)
+        if profile:
+            ref_path = profile.get("_ref_path")
+            if ref_path:
+                kwargs["reference_wav_path"] = ref_path
+                print(f"[ajnano-voice] Using voice: {req.voice} ({profile['name']})")
+            if profile.get("voice_design"):
+                kwargs["text"] = profile["voice_design"] + req.input
+        wav = MODEL.generate(**kwargs)
     except Exception as e:
         raise HTTPException(500, f"Generation failed: {e}")
     elapsed = time.time() - t0
