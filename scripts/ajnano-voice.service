@@ -10,7 +10,7 @@ Environment="TORCHDYNAMO_DISABLE=1"
 Environment="VOICE_HOST=0.0.0.0"
 Environment="VOICE_PORT=8808"
 Environment="VOICE_DEVICE=cuda"
-ExecStart=/home/boon/ajnano-voice/venv/bin/python server.py
+ExecStart=/home/boon/voxcpm-env/bin/python server.py
 Restart=always
 RestartSec=5
 
